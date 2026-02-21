@@ -1,0 +1,22 @@
+{
+  "name": "openapi-sentinel",
+  "version": "0.1.0",
+  "description": "Runtime OpenAPI 3.1 request/response validation middleware — detect spec drift live",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "npx tsx --test tests/*.test.ts"
+  },
+  "keywords": [
+    "openapi",
+    "validation",
+    "middleware",
+    "spec-drift",
+    "api"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
