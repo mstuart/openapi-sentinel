@@ -1,5 +1,14 @@
-# openapi-sentinel
+<div align="center">
+  <img src="docs/assets/logo.svg" alt="openapi-sentinel — Runtime OpenAPI 3.1 request/response validation middleware — detect spec drift live" width="720">
+</div>
 
+<p align="center"><strong>Runtime OpenAPI 3.1 request/response validation middleware — detect spec drift live</strong></p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/openapi-sentinel"><img src="https://img.shields.io/npm/v/openapi-sentinel?label=npm" alt="npm"></a>
+</p>
+
+---
 Runtime OpenAPI 3.1 request/response validation middleware. Detect spec drift live in staging environments. Zero runtime dependencies.
 
 ## Motivation
