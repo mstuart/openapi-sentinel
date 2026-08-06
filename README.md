@@ -5,6 +5,7 @@
 <p align="center"><strong>Runtime OpenAPI 3.1 request/response validation middleware — detect spec drift live</strong></p>
 
 <p align="center">
+  <a href="https://github.com/mstuart/openapi-sentinel/actions/workflows/ci.yml"><img src="https://github.com/mstuart/openapi-sentinel/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://www.npmjs.com/package/openapi-sentinel"><img src="https://img.shields.io/npm/v/openapi-sentinel?label=npm" alt="npm"></a>
 </p>
 
