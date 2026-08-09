@@ -7,6 +7,8 @@
 <p align="center">
   <a href="https://github.com/mstuart/openapi-sentinel/actions/workflows/ci.yml"><img src="https://github.com/mstuart/openapi-sentinel/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://www.npmjs.com/package/openapi-sentinel"><img src="https://img.shields.io/npm/v/openapi-sentinel?label=npm" alt="npm"></a>
+  <a href="https://deepwiki.com/mstuart/openapi-sentinel"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+  <a href="https://socket.dev/npm/package/openapi-sentinel"><img src="https://socket.dev/api/badge/npm/package/openapi-sentinel" alt="Socket"></a>
 </p>
 
 ---
