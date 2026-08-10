@@ -1,18 +1,18 @@
-import { loadSpec } from './loader.js';
-import { createMatcher } from './matcher.js';
-import { DriftReporter } from './reporter.js';
-import type { SentinelOptions, Violation } from './types.js';
+import { loadSpec } from "./loader.js";
+import { createMatcher } from "./matcher.js";
+import { DriftReporter } from "./reporter.js";
+import type { SentinelOptions, Violation } from "./types.js";
 import {
   validateRequest as doValidateRequest,
   validateResponse as doValidateResponse,
-} from './validator.js';
+} from "./validator.js";
 
 export class OpenApiSentinel {
-  private match: ReturnType<typeof createMatcher>;
-  private reporter: DriftReporter;
-  private validateReq: boolean;
-  private validateRes: boolean;
-  private onViolation: 'throw' | 'warn' | 'log';
+  private readonly match: ReturnType<typeof createMatcher>;
+  private readonly onViolation: "throw" | "warn" | "log";
+  private readonly reporter: DriftReporter;
+  private readonly validateReq: boolean;
+  private readonly validateRes: boolean;
 
   constructor(opts: SentinelOptions) {
     const spec = loadSpec(opts.spec);
@@ -27,10 +27,15 @@ export class OpenApiSentinel {
    * Web Standards middleware compatible with Hono and similar frameworks.
    * Signature: (req: Request, next: () => Promise<Response>) => Promise<Response>
    */
-  middleware(): (req: Request, next: () => Promise<Response>) => Promise<Response> {
-    return async (req: Request, next: () => Promise<Response>): Promise<Response> => {
-      const url = new URL(req.url, 'http://localhost');
-      const pathname = url.pathname;
+  middleware(): (
+    req: Request,
+    next: () => Promise<Response>
+  ) => Promise<Response> {
+    return async (
+      req: Request,
+      next: () => Promise<Response>
+    ): Promise<Response> => {
+      const { pathname } = new URL(req.url, "http://localhost");
       const matched = this.match(req.method, pathname);
 
       // If the path is not in the spec, pass through
@@ -51,7 +56,12 @@ export class OpenApiSentinel {
 
       // Validate response
       if (this.validateRes) {
-        const violations = await doValidateResponse(req, response, matched, pathname);
+        const violations = await doValidateResponse(
+          req,
+          response,
+          matched,
+          pathname
+        );
         if (violations.length > 0) {
           this.handleViolations(violations);
         }
@@ -65,11 +75,12 @@ export class OpenApiSentinel {
    * Directly validate a request (useful for testing).
    */
   async validateRequest(req: Request): Promise<Violation[]> {
-    const url = new URL(req.url, 'http://localhost');
-    const pathname = url.pathname;
+    const { pathname } = new URL(req.url, "http://localhost");
     const matched = this.match(req.method, pathname);
 
-    if (!matched) return [];
+    if (!matched) {
+      return [];
+    }
 
     const violations = await doValidateRequest(req, matched, pathname);
     this.reporter.add(violations);
@@ -80,11 +91,12 @@ export class OpenApiSentinel {
    * Directly validate a response (useful for testing).
    */
   async validateResponse(req: Request, res: Response): Promise<Violation[]> {
-    const url = new URL(req.url, 'http://localhost');
-    const pathname = url.pathname;
+    const { pathname } = new URL(req.url, "http://localhost");
     const matched = this.match(req.method, pathname);
 
-    if (!matched) return [];
+    if (!matched) {
+      return [];
+    }
 
     const violations = await doValidateResponse(req, res, matched, pathname);
     this.reporter.add(violations);
@@ -102,20 +114,26 @@ export class OpenApiSentinel {
     this.reporter.add(violations);
 
     switch (this.onViolation) {
-      case 'throw':
+      case "throw":
         throw new Error(
-          `OpenAPI violation: ${violations.map((v) => v.issue).join('; ')}`
+          `OpenAPI violation: ${violations.map((v) => v.issue).join("; ")}`
         );
-      case 'warn':
+      case "warn":
         for (const v of violations) {
-          console.warn(`[openapi-sentinel] ${v.type} ${v.method} ${v.path}: ${v.issue}`);
+          console.warn(
+            `[openapi-sentinel] ${v.type} ${v.method} ${v.path}: ${v.issue}`
+          );
         }
         break;
-      case 'log':
+      case "log":
         for (const v of violations) {
-          console.log(`[openapi-sentinel] ${v.type} ${v.method} ${v.path}: ${v.issue}`);
+          console.log(
+            `[openapi-sentinel] ${v.type} ${v.method} ${v.path}: ${v.issue}`
+          );
         }
         break;
+      default:
+        return;
     }
   }
 }
