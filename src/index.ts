@@ -1,5 +1,6 @@
-export { OpenApiSentinel, createSentinel } from './sentinel.js';
-export { loadSpec } from './loader.js';
+// biome-ignore lint/performance/noBarrelFile: This is the package's intentional public entry point.
+export { loadSpec } from "./loader.js";
+export { createSentinel, OpenApiSentinel } from "./sentinel.js";
 export type {
   HttpMethod,
   MatchedOperation,
@@ -11,4 +12,4 @@ export type {
   SchemaObject,
   SentinelOptions,
   Violation,
-} from './types.js';
+} from "./types.js";
