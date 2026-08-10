@@ -1,10 +1,9 @@
-import { writeFileSync } from 'node:fs';
-import type { Violation } from './types.js';
+import { writeFileSync } from "node:fs";
+import type { Violation } from "./types.js";
 
 export class DriftReporter {
-  private violations: Violation[] = [];
-  private driftReportPath: string | undefined;
-  private exitHandlerRegistered = false;
+  private readonly violations: Violation[] = [];
+  private readonly driftReportPath: string | undefined;
 
   constructor(driftReportPath?: string) {
     this.driftReportPath = driftReportPath;
@@ -23,10 +22,7 @@ export class DriftReporter {
   }
 
   private registerExitHandler(): void {
-    if (this.exitHandlerRegistered) return;
-    this.exitHandlerRegistered = true;
-
-    process.on('exit', () => {
+    process.on("exit", () => {
       if (this.driftReportPath && this.violations.length > 0) {
         try {
           writeFileSync(

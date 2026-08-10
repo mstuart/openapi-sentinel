@@ -1,22 +1,29 @@
 // OpenAPI 3.1 subset types — just enough for validation
 
 export interface OpenApiSpec {
-  openapi: string;
   info: { title: string; version: string };
+  openapi: string;
   paths: Record<string, PathItem>;
 }
 
 export interface PathItem {
+  delete?: Operation;
   get?: Operation;
+  head?: Operation;
+  options?: Operation;
+  patch?: Operation;
   post?: Operation;
   put?: Operation;
-  patch?: Operation;
-  delete?: Operation;
-  options?: Operation;
-  head?: Operation;
 }
 
-export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'options' | 'head';
+export type HttpMethod =
+  | "get"
+  | "post"
+  | "put"
+  | "patch"
+  | "delete"
+  | "options"
+  | "head";
 
 export interface Operation {
   parameters?: Parameter[];
@@ -25,15 +32,15 @@ export interface Operation {
 }
 
 export interface Parameter {
+  in: "query" | "header" | "path" | "cookie";
   name: string;
-  in: 'query' | 'header' | 'path' | 'cookie';
   required?: boolean;
   schema?: SchemaObject;
 }
 
 export interface RequestBody {
-  required?: boolean;
   content: Record<string, MediaType>;
+  required?: boolean;
 }
 
 export interface MediaType {
@@ -41,41 +48,41 @@ export interface MediaType {
 }
 
 export interface ResponseObject {
-  description: string;
   content?: Record<string, MediaType>;
+  description: string;
 }
 
 export interface SchemaObject {
-  type?: string;
+  items?: SchemaObject;
   properties?: Record<string, SchemaObject>;
   required?: string[];
-  items?: SchemaObject;
+  type?: string;
 }
 
 // Sentinel types
 
 export interface SentinelOptions {
+  report?: {
+    driftReportPath?: string;
+  };
   spec: object | string;
   validate: {
     request?: boolean;
     response?: boolean;
-    onViolation: 'throw' | 'warn' | 'log';
-  };
-  report?: {
-    driftReportPath?: string;
+    onViolation: "throw" | "warn" | "log";
   };
 }
 
 export interface Violation {
-  type: 'request' | 'response';
+  issue: string;
   method: string;
   path: string;
-  issue: string;
   timestamp: string;
+  type: "request" | "response";
 }
 
 export interface MatchedOperation {
   operation: Operation;
-  pathTemplate: string;
   pathParams: Record<string, string>;
+  pathTemplate: string;
 }
