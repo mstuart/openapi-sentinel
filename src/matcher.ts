@@ -12,6 +12,14 @@ interface CompiledPath {
   template: string;
 }
 
+function decodePathParameter(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 /**
  * Compile OpenAPI path templates into regexes for efficient matching.
  * E.g. "/users/{id}" → /^\/users\/([^/]+)$/
@@ -79,7 +87,7 @@ export function createMatcher(spec: OpenApiSpec) {
 
       const pathParams: Record<string, string> = {};
       for (let i = 0; i < entry.paramNames.length; i += 1) {
-        pathParams[entry.paramNames[i]] = match[i + 1];
+        pathParams[entry.paramNames[i]] = decodePathParameter(match[i + 1]);
       }
 
       return {
