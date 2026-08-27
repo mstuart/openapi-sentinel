@@ -80,6 +80,18 @@ describe("matchOperation", () => {
     assert.equal(result.pathParams.memberId, "m2");
   });
 
+  it("decodes percent-encoded path parameters", () => {
+    const result = match("GET", "/users/hello%20world%2Bplus");
+    assert.ok(result);
+    assert.equal(result.pathParams.id, "hello world+plus");
+  });
+
+  it("preserves malformed percent-encoded path parameters", () => {
+    const result = match("GET", "/users/bad%2");
+    assert.ok(result);
+    assert.equal(result.pathParams.id, "bad%2");
+  });
+
   it("returns null for unmatched path", () => {
     const result = match("GET", "/unknown");
     assert.equal(result, null);
