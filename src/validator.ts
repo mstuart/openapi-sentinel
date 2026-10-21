@@ -12,8 +12,11 @@ function checkType(value: unknown, expectedType: string): boolean {
     case "string":
       return typeof value === "string";
     case "number":
+      return typeof value === "number" && Number.isFinite(value);
     case "integer":
-      return typeof value === "number";
+      return typeof value === "number" && Number.isInteger(value);
+    case "null":
+      return value === null;
     case "boolean":
       return typeof value === "boolean";
     case "array":
@@ -128,7 +131,7 @@ export async function validateRequest(
     const rb = matched.operation.requestBody;
     const contentType = req.headers.get("content-type") || "";
 
-    if (rb.required && !req.body && contentType === "") {
+    if (rb.required && !req.body) {
       violations.push({
         issue: "Request body is required but missing",
         method,
@@ -136,6 +139,7 @@ export async function validateRequest(
         timestamp: now(),
         type: "request",
       });
+      return violations;
     }
 
     // Check Content-Type matches one of the expected media types
@@ -164,12 +168,31 @@ export async function validateRequest(
     ) {
       try {
         const cloned = req.clone();
-        const body = (await cloned.json()) as Record<string, unknown>;
+        const body: unknown = await cloned.json();
         const { schema } = rb.content["application/json"];
         if (!schema) {
           return violations;
         }
-        violations.push(...validateBody(body, schema, method, pathname));
+        if (schema.type && !checkType(body, schema.type)) {
+          violations.push({
+            issue: `Request body expected type '${schema.type}'`,
+            method,
+            path: pathname,
+            timestamp: now(),
+            type: "request",
+          });
+          return violations;
+        }
+        if (typeof body === "object" && body !== null && !Array.isArray(body)) {
+          violations.push(
+            ...validateBody(
+              body as Record<string, unknown>,
+              schema,
+              method,
+              pathname
+            )
+          );
+        }
       } catch {
         violations.push({
           issue: "Request body is not valid JSON",
@@ -197,12 +220,14 @@ export function validateResponse(
   const violations: Violation[] = [];
   const method = req.method.toUpperCase();
   const statusCode = String(res.status);
+  const statusRange = `${statusCode[0]}XX`;
 
   // Check that the status code is defined in the spec
   const definedStatuses = Object.keys(matched.operation.responses);
   if (
     !(
       definedStatuses.includes(statusCode) ||
+      definedStatuses.includes(statusRange) ||
       definedStatuses.includes("default")
     )
   ) {
@@ -218,6 +243,7 @@ export function validateResponse(
   // Check response Content-Type if spec defines content for this status
   const responseSpec =
     matched.operation.responses[statusCode] ||
+    matched.operation.responses[statusRange] ||
     matched.operation.responses.default;
   if (responseSpec?.content) {
     const contentType = res.headers.get("content-type") || "";
