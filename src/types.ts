@@ -11,9 +11,11 @@ export interface PathItem {
   get?: Operation;
   head?: Operation;
   options?: Operation;
+  parameters?: Parameter[];
   patch?: Operation;
   post?: Operation;
   put?: Operation;
+  trace?: Operation;
 }
 
 export type HttpMethod =
@@ -23,7 +25,8 @@ export type HttpMethod =
   | "patch"
   | "delete"
   | "options"
-  | "head";
+  | "head"
+  | "trace";
 
 export interface Operation {
   parameters?: Parameter[];
