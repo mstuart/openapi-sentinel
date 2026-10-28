@@ -2,8 +2,37 @@ import type {
   HttpMethod,
   MatchedOperation,
   OpenApiSpec,
+  Operation,
+  Parameter,
   PathItem,
 } from "./types.js";
+
+const HTTP_METHODS = new Set([
+  "get",
+  "post",
+  "put",
+  "patch",
+  "delete",
+  "options",
+  "head",
+  "trace",
+]);
+
+function inheritParameters(
+  operation: Operation,
+  inherited?: Parameter[]
+): Operation {
+  if (!inherited?.length) {
+    return operation;
+  }
+  const parameters = new Map<string, Parameter>();
+  for (const parameter of [...inherited, ...(operation.parameters ?? [])]) {
+    const name =
+      parameter.in === "header" ? parameter.name.toLowerCase() : parameter.name;
+    parameters.set(`${parameter.in}:${name}`, parameter);
+  }
+  return { ...operation, parameters: [...parameters.values()] };
+}
 
 interface CompiledPath {
   paramNames: string[];
@@ -72,6 +101,9 @@ export function createMatcher(spec: OpenApiSpec) {
     pathname: string
   ): MatchedOperation | null {
     const normalizedMethod = method.toLowerCase() as HttpMethod;
+    if (!HTTP_METHODS.has(normalizedMethod)) {
+      return null;
+    }
 
     for (const entry of compiled) {
       const match = entry.regex.exec(pathname);
@@ -82,16 +114,21 @@ export function createMatcher(spec: OpenApiSpec) {
 
       const operation = entry.pathItem[normalizedMethod];
       if (!operation) {
-        continue;
+        return null;
       }
 
       const pathParams: Record<string, string> = {};
       for (let i = 0; i < entry.paramNames.length; i += 1) {
-        pathParams[entry.paramNames[i]] = decodePathParameter(match[i + 1]);
+        Object.defineProperty(pathParams, entry.paramNames[i], {
+          configurable: true,
+          enumerable: true,
+          value: decodePathParameter(match[i + 1]),
+          writable: true,
+        });
       }
 
       return {
-        operation,
+        operation: inheritParameters(operation, entry.pathItem.parameters),
         pathParams,
         pathTemplate: entry.template,
       };

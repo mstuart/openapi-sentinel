@@ -1,4 +1,9 @@
-import type { MatchedOperation, SchemaObject, Violation } from "./types.js";
+import type {
+  MatchedOperation,
+  MediaType,
+  SchemaObject,
+  Violation,
+} from "./types.js";
 
 function now(): string {
   return new Date().toISOString();
@@ -30,6 +35,57 @@ function checkType(value: unknown, expectedType: string): boolean {
   }
 }
 
+function selectMediaType(
+  content: Record<string, MediaType>,
+  contentType: string
+): MediaType | undefined {
+  if (!contentType) {
+    return;
+  }
+  const entries = Object.entries(content);
+  for (const candidate of [
+    contentType,
+    `${contentType.split("/")[0]}/*`,
+    "*/*",
+  ]) {
+    const selected = entries.find(([name]) => name.toLowerCase() === candidate);
+    if (selected) {
+      return selected[1];
+    }
+  }
+}
+
+function validateArrayItems(
+  body: unknown[],
+  schema: SchemaObject,
+  method: string,
+  path: string,
+  location: string
+): Violation[] {
+  const { items } = schema;
+  if (!items) {
+    return [];
+  }
+  const violations: Violation[] = [];
+  for (const [index, value] of body.entries()) {
+    const itemLocation = `${location}[${index}]`;
+    if (items.type && !checkType(value, items.type)) {
+      violations.push({
+        issue: `${itemLocation} expected type '${items.type}'`,
+        method,
+        path,
+        timestamp: now(),
+        type: "request",
+      });
+    } else if (Array.isArray(value)) {
+      violations.push(
+        ...validateArrayItems(value, items, method, path, itemLocation)
+      );
+    }
+  }
+  return violations;
+}
+
 /**
  * Validate a request body against the matched operation's schema.
  * Performs structural checks: required fields, unknown fields, scalar types.
@@ -45,7 +101,7 @@ function validateBody(
   // Check required fields
   if (schema.required) {
     for (const field of schema.required) {
-      if (!(field in body)) {
+      if (!Object.hasOwn(body, field)) {
         violations.push({
           issue: `Missing required field: ${field}`,
           method,
@@ -57,37 +113,41 @@ function validateBody(
     }
   }
 
+  if (!schema.properties) {
+    return violations;
+  }
+
   // Check unknown fields at top level
-  if (schema.properties) {
-    for (const key of Object.keys(body)) {
-      if (!(key in schema.properties)) {
-        violations.push({
-          issue: `Unknown field: ${key}`,
-          method,
-          path,
-          timestamp: now(),
-          type: "request",
-        });
-      }
+  for (const key of Object.keys(body)) {
+    if (!Object.hasOwn(schema.properties, key)) {
+      violations.push({
+        issue: `Unknown field: ${key}`,
+        method,
+        path,
+        timestamp: now(),
+        type: "request",
+      });
     }
   }
 
   // Check types for known properties
-  if (schema.properties) {
-    for (const [key, propSchema] of Object.entries(schema.properties)) {
-      if (
-        key in body &&
-        propSchema.type &&
-        !checkType(body[key], propSchema.type)
-      ) {
-        violations.push({
-          issue: `Field '${key}' expected type '${propSchema.type}', got '${typeof body[key]}'`,
-          method,
-          path,
-          timestamp: now(),
-          type: "request",
-        });
-      }
+  for (const [key, propSchema] of Object.entries(schema.properties)) {
+    if (
+      Object.hasOwn(body, key) &&
+      propSchema.type &&
+      !checkType(body[key], propSchema.type)
+    ) {
+      violations.push({
+        issue: `Field '${key}' expected type '${propSchema.type}', got '${typeof body[key]}'`,
+        method,
+        path,
+        timestamp: now(),
+        type: "request",
+      });
+    } else if (Object.hasOwn(body, key) && Array.isArray(body[key])) {
+      violations.push(
+        ...validateArrayItems(body[key], propSchema, method, path, key)
+      );
     }
   }
 
@@ -142,15 +202,16 @@ export async function validateRequest(
       return violations;
     }
 
+    if (!req.body) {
+      return violations;
+    }
+
     // Check Content-Type matches one of the expected media types
     const expectedTypes = Object.keys(rb.content);
-    const baseContentType = contentType.split(";")[0].trim();
+    const baseContentType = contentType.split(";")[0].trim().toLowerCase();
 
-    if (
-      baseContentType &&
-      expectedTypes.length > 0 &&
-      !expectedTypes.includes(baseContentType)
-    ) {
+    const selectedMediaType = selectMediaType(rb.content, baseContentType);
+    if (baseContentType && expectedTypes.length > 0 && !selectedMediaType) {
       violations.push({
         issue: `Unexpected Content-Type '${baseContentType}', expected one of: ${expectedTypes.join(", ")}`,
         method,
@@ -161,15 +222,11 @@ export async function validateRequest(
     }
 
     // Validate body structure for JSON
-    if (
-      baseContentType === "application/json" &&
-      // biome-ignore lint/suspicious/noUnnecessaryConditions: OpenAPI media types are dynamic despite the index signature.
-      rb.content["application/json"]?.schema
-    ) {
+    if (baseContentType === "application/json" && selectedMediaType?.schema) {
       try {
         const cloned = req.clone();
         const body: unknown = await cloned.json();
-        const { schema } = rb.content["application/json"];
+        const { schema } = selectedMediaType;
         if (!schema) {
           return violations;
         }
@@ -183,7 +240,17 @@ export async function validateRequest(
           });
           return violations;
         }
-        if (typeof body === "object" && body !== null && !Array.isArray(body)) {
+        if (Array.isArray(body)) {
+          violations.push(
+            ...validateArrayItems(
+              body,
+              schema,
+              method,
+              pathname,
+              "Request body"
+            )
+          );
+        } else if (typeof body === "object" && body !== null) {
           violations.push(
             ...validateBody(
               body as Record<string, unknown>,
@@ -247,13 +314,13 @@ export function validateResponse(
     matched.operation.responses.default;
   if (responseSpec?.content) {
     const contentType = res.headers.get("content-type") || "";
-    const baseContentType = contentType.split(";")[0].trim();
+    const baseContentType = contentType.split(";")[0].trim().toLowerCase();
     const expectedTypes = Object.keys(responseSpec.content);
 
     if (
       baseContentType &&
       expectedTypes.length > 0 &&
-      !expectedTypes.includes(baseContentType)
+      !selectMediaType(responseSpec.content, baseContentType)
     ) {
       violations.push({
         issue: `Unexpected response Content-Type '${baseContentType}', expected one of: ${expectedTypes.join(", ")}`,
