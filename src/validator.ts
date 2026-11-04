@@ -208,7 +208,9 @@ export async function validateRequest(
 
     // Check Content-Type matches one of the expected media types
     const expectedTypes = Object.keys(rb.content);
-    const baseContentType = contentType.split(";")[0].trim().toLowerCase();
+    const baseContentType =
+      contentType.split(";")[0].trim().toLowerCase() ||
+      "application/octet-stream";
 
     const selectedMediaType = selectMediaType(rb.content, baseContentType);
     if (baseContentType && expectedTypes.length > 0 && !selectedMediaType) {
@@ -222,7 +224,11 @@ export async function validateRequest(
     }
 
     // Validate body structure for JSON
-    if (baseContentType === "application/json" && selectedMediaType?.schema) {
+    if (
+      (baseContentType === "application/json" ||
+        baseContentType.endsWith("+json")) &&
+      selectedMediaType?.schema
+    ) {
       try {
         const cloned = req.clone();
         const body: unknown = await cloned.json();
@@ -314,7 +320,9 @@ export function validateResponse(
     matched.operation.responses.default;
   if (responseSpec?.content) {
     const contentType = res.headers.get("content-type") || "";
-    const baseContentType = contentType.split(";")[0].trim().toLowerCase();
+    const baseContentType =
+      contentType.split(";")[0].trim().toLowerCase() ||
+      (res.body ? "application/octet-stream" : "");
     const expectedTypes = Object.keys(responseSpec.content);
 
     if (
